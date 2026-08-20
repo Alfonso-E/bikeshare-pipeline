@@ -1,0 +1,34 @@
+# GBFS systems to ingest.
+# Discovery URLs come from the MobilityData catalog:
+#   https://github.com/MobilityData/gbfs/blob/master/systems.csv
+#
+# `enabled: false` keeps a system in the config without polling it.
+# Start with one city. Add more once the pipeline has been running cleanly.
+
+user_agent: "bikeshare-pipeline/0.1 (personal portfolio project)"
+request_timeout_seconds: 30
+
+systems:
+  - key: nyc
+    name: Citi Bike NYC
+    timezone: America/New_York
+    discovery_url: https://gbfs.citibikenyc.com/gbfs/gbfs.json
+    enabled: true
+
+  - key: chicago
+    name: Divvy Chicago
+    timezone: America/Chicago
+    discovery_url: https://gbfs.divvybikes.com/gbfs/gbfs.json
+    enabled: false
+
+  - key: bayarea
+    name: Bay Wheels
+    timezone: America/Los_Angeles
+    discovery_url: https://gbfs.baywheels.com/gbfs/gbfs.json
+    enabled: false
+
+  - key: toronto
+    name: Bike Share Toronto
+    timezone: America/Toronto
+    discovery_url: https://tor.publicbikesystem.net/customer/gbfs/v2/gbfs.json
+    enabled: false

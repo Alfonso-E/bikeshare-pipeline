@@ -1,0 +1,69 @@
+name: ingest
+
+# Scheduled collection. This is what makes the project a pipeline rather than
+# a notebook: it runs whether or not anyone is watching, and the dataset grows.
+#
+# GitHub's scheduled runners are best-effort and are routinely delayed by
+# several minutes under load, and skipped entirely on repos with no activity
+# for 60 days. Neither matters much here -- a missed snapshot is a gap, not a
+# corruption, and the models carry snapshot_count so thin hours are visible
+# rather than silently averaged in.
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+# Never let two runs write the parquet lake and push at the same time.
+concurrency:
+  group: ingest
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Ingest
+        run: python scripts/run_ingest.py
+
+      - name: Data quality
+        run: python scripts/run_quality.py
+
+      - name: Build warehouse
+        working-directory: dbt
+        run: dbt build --profiles-dir .
+
+      - name: Commit new snapshots
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # data/raw is gitignored so local experiments stay out of the repo.
+          # The scheduled job is the one writer allowed to persist it, hence -f.
+          #
+          # Size budget: ~30 kB per snapshot for one system at 48 snapshots a
+          # day is roughly 0.5 GB a year. Fine for a portfolio repo, not fine
+          # forever. When it stops being fine, the fix is to point RAW_DIR at
+          # object storage (S3/R2) -- the dbt sources read a glob either way,
+          # so nothing downstream changes.
+          git add -f data/raw data/quality/latest.json
+          if git diff --staged --quiet; then
+            echo "no new snapshots; feed had not ticked"
+            exit 0
+          fi
+          git commit -m "data: snapshot $(date -u +'%Y-%m-%dT%H:%MZ')"
+          git pull --rebase --autostash origin main
+          git push

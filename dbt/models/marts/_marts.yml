@@ -1,0 +1,115 @@
+version: 2
+
+models:
+  - name: dim_station
+    description: One row per station. Conformed dimension for every mart.
+    columns:
+      - name: station_key
+        description: md5(system_key, station_id). Stable across reloads.
+        tests: [unique, not_null]
+      - name: system_key
+        tests: [not_null]
+      - name: station_id
+        tests: [not_null]
+      - name: capacity
+        tests:
+          - value_between:
+              arguments:
+                min_value: 0
+                max_value: 200
+      - name: capacity_band
+        tests:
+          - accepted_values:
+              arguments:
+                values: ["small", "medium", "large", "unknown"]
+      - name: operational_rate
+        tests:
+          - value_between:
+              arguments:
+                min_value: 0
+                max_value: 1
+
+  - name: fct_station_availability
+    description: >
+      One row per station per feed tick. net_bike_change is derived by
+      differencing consecutive snapshots and therefore undercounts turnover
+      whenever a departure and an arrival fall inside the same interval.
+    tests:
+      - unique_combination:
+          arguments:
+            columns: ["station_key", "snapshot_ts"]
+    columns:
+      - name: station_key
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_station')
+                field: station_key
+      - name: snapshot_ts
+        tests: [not_null]
+      - name: bikes_available
+        tests:
+          - not_null
+          - value_between:
+              arguments:
+                min_value: 0
+                max_value: 500
+      - name: docks_available
+        tests:
+          - not_null
+          - value_between:
+              arguments:
+                min_value: 0
+                max_value: 500
+      - name: occupancy_rate
+        tests:
+          - value_between:
+              arguments:
+                min_value: 0
+                max_value: 1
+      - name: hour_of_day
+        tests:
+          - value_between:
+              arguments:
+                min_value: 0
+                max_value: 23
+
+  - name: agg_station_hourly
+    description: >
+      One row per station per hour. The modelling and dashboard table.
+      snapshot_count says how many observations back each row -- filter on it
+      before training, because a one-snapshot hour is mostly noise.
+    tests:
+      - unique_combination:
+          arguments:
+            columns: ["station_key", "snapshot_hour"]
+    columns:
+      - name: station_key
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_station')
+                field: station_key
+      - name: snapshot_hour
+        tests: [not_null]
+      - name: snapshot_count
+        tests:
+          - not_null
+          - value_between:
+              arguments:
+                min_value: 1
+                max_value: 3600
+      - name: pct_time_empty
+        tests:
+          - value_between:
+              arguments:
+                min_value: 0
+                max_value: 1
+      - name: pct_time_full
+        tests:
+          - value_between:
+              arguments:
+                min_value: 0
+                max_value: 1

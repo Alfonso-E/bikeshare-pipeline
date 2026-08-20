@@ -1,0 +1,25 @@
+# data artifacts - never commit these
+data/raw/
+data/warehouse.duckdb
+data/warehouse.duckdb.wal
+data/quality/
+
+# python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+
+# dbt
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+logs/
+
+# os / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

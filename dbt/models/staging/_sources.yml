@@ -1,0 +1,22 @@
+version: 2
+
+sources:
+  - name: raw
+    description: >
+      The Parquet lake written by scripts/run_ingest.py. dbt-duckdb reads the
+      files directly via external_location, so there is no separate load step
+      and no copy of the data sitting in the warehouse.
+    tables:
+      - name: station_status
+        description: One snapshot of every station's live availability.
+        meta:
+          external_location: >-
+            read_parquet('../data/raw/station_status/*/*/*.parquet',
+                         hive_partitioning = true, union_by_name = true)
+
+      - name: station_information
+        description: Daily snapshot of station metadata (name, location, capacity).
+        meta:
+          external_location: >-
+            read_parquet('../data/raw/station_information/*/*/*.parquet',
+                         hive_partitioning = true, union_by_name = true)

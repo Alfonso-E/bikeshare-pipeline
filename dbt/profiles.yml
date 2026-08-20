@@ -1,0 +1,11 @@
+# Kept in the repo on purpose: DuckDB is a local file and there are no
+# credentials here. Run dbt with --profiles-dir . from the dbt/ directory.
+bikeshare:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: ../data/warehouse.duckdb
+      threads: 4
+      extensions:
+        - httpfs

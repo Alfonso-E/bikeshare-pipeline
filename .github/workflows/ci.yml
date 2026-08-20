@@ -1,0 +1,38 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Unit tests
+        run: pytest tests -q
+
+      # The pipeline is exercised end to end against the live feed on every
+      # push. It is slower than mocking, but it is the only thing that catches
+      # the failure that actually happens in practice: an operator quietly
+      # changing their feed shape.
+      - name: Ingest one snapshot
+        run: python scripts/run_ingest.py --system nyc
+
+      - name: Build and test the warehouse
+        working-directory: dbt
+        run: dbt build --profiles-dir .
+
+      - name: Raw-layer data quality
+        run: python scripts/run_quality.py
