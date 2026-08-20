@@ -1,0 +1,41 @@
+{
+  "generated_at": "2026-08-20T11:53:10.497617+00:00",
+  "passed": true,
+  "checks": [
+    {
+      "name": "status_not_empty",
+      "passed": true,
+      "severity": "error",
+      "observed": 2508,
+      "detail": "raw.station_status must contain rows"
+    },
+    {
+      "name": "status_grain_unique",
+      "passed": true,
+      "severity": "error",
+      "observed": 0,
+      "detail": "(system_key, station_id, feed_last_updated) must be unique"
+    },
+    {
+      "name": "station_id_not_null",
+      "passed": true,
+      "severity": "error",
+      "observed": 0,
+      "detail": "station_id must be set"
+    },
+    {
+      "name": "raw_freshness",
+      "passed": true,
+      "severity": "warn",
+      "observed": 0,
+      "detail": "newest snapshot should be under 120 minutes old"
+    },
+    {
+      "name": "systems_reporting",
+      "passed": true,
+      "severity": "warn",
+      "observed": 1,
+      "detail": "at least one enabled system should have snapshots"
+    }
+  ]
+}
