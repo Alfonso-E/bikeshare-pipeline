@@ -1,25 +1,15 @@
-# Pinned to what the project was verified against on 2026-08-20.
-# Loosen at your own pace; pin at least the dbt pair, since dbt-core and the
-# adapter have to move together.
+# Collection layer only. Pinned to what this was verified against 2026-08-20.
+#
+# Whatever you use downstream -- pandas, polars, dbt, sklearn -- is your call
+# and belongs in its own requirements file, so the collector stays installable
+# on its own and CI stays fast.
 
-# --- ingestion ---
 requests==2.34.2
 PyYAML==6.0.3
 pyarrow==25.0.1
 
-# --- warehouse + transformation ---
+# Used only to read the Parquet lake back for the integrity checks. Any reader
+# works for your own analysis; this one is here because it needs no server.
 duckdb==1.5.5
-dbt-core==1.12.2
-dbt-duckdb==1.11.0
 
-# --- analysis + modelling ---
-pandas==3.0.5
-numpy==2.4.6
-scikit-learn==1.9.0
-
-# --- serving ---
-streamlit==1.62.0
-altair==6.2.2
-
-# --- dev ---
 pytest==9.1.1

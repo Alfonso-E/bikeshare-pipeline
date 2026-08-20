@@ -2,7 +2,7 @@ name: ci
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
   workflow_dispatch:
 
@@ -23,16 +23,11 @@ jobs:
       - name: Unit tests
         run: pytest tests -q
 
-      # The pipeline is exercised end to end against the live feed on every
-      # push. It is slower than mocking, but it is the only thing that catches
-      # the failure that actually happens in practice: an operator quietly
-      # changing their feed shape.
+      # The collector runs against the live feed on every push. Slower than
+      # mocking, but it is the only thing that catches the failure that
+      # actually happens: an operator quietly changing their feed shape.
       - name: Ingest one snapshot
         run: python scripts/run_ingest.py --system nyc
 
-      - name: Build and test the warehouse
-        working-directory: dbt
-        run: dbt build --profiles-dir .
-
-      - name: Raw-layer data quality
+      - name: Collector integrity
         run: python scripts/run_quality.py

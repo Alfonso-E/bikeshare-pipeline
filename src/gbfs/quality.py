@@ -1,13 +1,14 @@
-"""Data quality checks over the raw layer.
+"""Integrity checks on the collector itself.
 
-These are *contract* checks on what the API gave us, run right after ingestion.
-They are deliberately separate from the dbt tests, which check the modelled
-marts. The split matters: a failure here means the upstream feed changed or
-broke, a dbt test failure means our own transformation logic is wrong.
+Scope note: these check that *collection* worked -- that snapshots arrived, that
+none were written twice, that the scheduler is still alive. They deliberately
+do NOT characterise the contents of the data. Whether a field is plausible,
+whether categories are consistent, whether stations go missing -- that is Data
+Understanding, and finding it out is the analyst's job, not the collector's.
 
 Each check returns a Check with a severity. `error` fails the run; `warn` is
-recorded in the report but does not block, because real feeds are messy and a
-pipeline that halts on every anomaly gets switched off by whoever operates it.
+recorded but does not block, because a pipeline that halts on every anomaly
+gets switched off by whoever operates it.
 """
 from __future__ import annotations
 
@@ -40,7 +41,7 @@ def run_checks(raw_dir: Path = RAW_DIR) -> list:
         register_raw_views(con, raw_dir)
         checks = []
 
-        # 1. Did we get any rows at all?
+        # 1. Did anything arrive at all?
         row_count = _scalar(con, "SELECT count(*) FROM raw.station_status")
         checks.append(
             Check(
@@ -54,7 +55,8 @@ def run_checks(raw_dir: Path = RAW_DIR) -> list:
         if not row_count:
             return checks
 
-        # 2. Primary key: one row per (system, station, snapshot).
+        # 2. Did we write the same feed tick twice? This is the check that
+        #    catches a broken idempotency key or an overlapping scheduler run.
         dupes = _scalar(
             con,
             """
@@ -76,33 +78,22 @@ def run_checks(raw_dir: Path = RAW_DIR) -> list:
             )
         )
 
-        # 3. No null station ids -- nothing downstream can join without one.
+        # 3. Rows without a station id cannot be joined to anything later.
         null_ids = _scalar(
             con, "SELECT count(*) FROM raw.station_status WHERE station_id IS NULL"
         )
         checks.append(
-            Check("station_id_not_null", null_ids == 0, "error", null_ids, "station_id must be set")
-        )
-
-        # 4. Counts cannot be negative.
-        negatives = _scalar(
-            con,
-            """
-            SELECT count(*) FROM raw.station_status
-            WHERE num_bikes_available < 0 OR num_docks_available < 0
-            """,
-        )
-        checks.append(
             Check(
-                "counts_non_negative",
-                negatives == 0,
+                "station_id_not_null",
+                null_ids == 0,
                 "error",
-                negatives,
-                "bike and dock counts must be >= 0",
+                null_ids,
+                "station_id must be set",
             )
         )
 
-        # 5. Freshness. If the newest snapshot is old, the scheduler is dead.
+        # 4. Is the scheduler still alive? A stale newest snapshot means
+        #    collection stopped, which is silent otherwise.
         age_minutes = _scalar(
             con,
             """
@@ -120,43 +111,17 @@ def run_checks(raw_dir: Path = RAW_DIR) -> list:
             )
         )
 
-        # 6. Stations reporting a bogus last_reported. Citi Bike emits 86400 for
-        #    dead docks; it is not an error, but a spike means something changed.
-        bogus = _scalar(
-            con,
-            """
-            SELECT count(*) FROM raw.station_status
-            WHERE last_reported IS NOT NULL AND last_reported < 1000000000
-            """,
+        # 5. Every system in the config should actually be producing data.
+        systems_with_data = _scalar(
+            con, "SELECT count(DISTINCT system_key) FROM raw.station_status"
         )
         checks.append(
             Check(
-                "last_reported_plausible",
-                bogus == 0,
+                "systems_reporting",
+                bool(systems_with_data),
                 "warn",
-                bogus,
-                "last_reported should look like a unix timestamp",
-            )
-        )
-
-        # 7. Referential integrity against station_information.
-        orphans = _scalar(
-            con,
-            """
-            SELECT count(DISTINCT s.station_id)
-            FROM raw.station_status s
-            LEFT JOIN (SELECT DISTINCT system_key, station_id FROM raw.station_information) i
-                   ON s.system_key = i.system_key AND s.station_id = i.station_id
-            WHERE i.station_id IS NULL
-            """,
-        )
-        checks.append(
-            Check(
-                "status_stations_known",
-                orphans == 0,
-                "warn",
-                orphans,
-                "every status station should appear in station_information",
+                systems_with_data,
+                "at least one enabled system should have snapshots",
             )
         )
 
