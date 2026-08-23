@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-08-23T12:49:44.018183+00:00",
+  "generated_at": "2026-08-23T13:36:16.039378+00:00",
   "passed": true,
   "checks": [
     {
       "name": "status_not_empty",
       "passed": true,
       "severity": "error",
-      "observed": 220709,
+      "observed": 223217,
       "detail": "raw.station_status must contain rows"
     },
     {
