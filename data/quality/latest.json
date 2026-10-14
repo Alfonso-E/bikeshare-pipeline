@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-13T21:28:00.882461+00:00",
+  "generated_at": "2026-10-14T00:33:55.841438+00:00",
   "passed": true,
   "checks": [
     {
       "name": "status_not_empty",
       "passed": true,
       "severity": "error",
-      "observed": 1062588,
+      "observed": 1065107,
       "detail": "raw.station_status must contain rows"
     },
     {
@@ -27,7 +27,7 @@
       "name": "raw_freshness",
       "passed": true,
       "severity": "warn",
-      "observed": 1,
+      "observed": 0,
       "detail": "newest snapshot should be under 120 minutes old"
     },
     {
